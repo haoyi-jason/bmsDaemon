@@ -49,6 +49,18 @@ private slots:
 
     void upgradeBMS(int options);
 
+    void on_pushButton_2_clicked();
+
+    void on_pbUpdateController_clicked();
+
+    void on_pbRestartController_clicked();
+
+    void on_pbUpdateUI_clicked();
+
+    void on_pbRestartUI_clicked();
+
+    void on_pbUpdateConfig_clicked();
+
 private:
     Ui::frmSocketConnection *ui;
 
@@ -70,6 +82,7 @@ private:
     quint64 m_recvFileSize = 0;
     quint64 m_recvdFileSize = 0;
     quint32 m_remoteAddress;
+    bool m_isLinux = false;
 };
 
 #endif // FRMSOCKETCONNECTION_H

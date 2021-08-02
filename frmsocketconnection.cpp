@@ -11,6 +11,7 @@
 #include <QProcess>
 #include <QSysInfo>
 
+
 frmSocketConnection::frmSocketConnection(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::frmSocketConnection)
@@ -20,12 +21,19 @@ frmSocketConnection::frmSocketConnection(QWidget *parent) :
 
     //QThread workThread;
    // connect(&m_workThread,&QThread::finished,m_ft,&FileTransferr::deleteLater);
-    connect(m_ft,&FileTransferr::finished,this,&frmSocketConnection::handleFinished);
-    connect(m_ft,&FileTransferr::aborted,this,&frmSocketConnection::handleAborted);
-    connect(m_ft,&FileTransferr::write,this,&frmSocketConnection::handleFtWrite);
-    connect(m_ft,&FileTransferr::progressBase,this,&frmSocketConnection::handleProgressBase);
-    connect(m_ft,&FileTransferr::progress,this,&frmSocketConnection::handleProgress);
-    m_ft->moveToThread(&m_workThread);
+//    connect(m_ft,&FileTransferr::finished,this,&frmSocketConnection::handleFinished);
+//    connect(m_ft,&FileTransferr::aborted,this,&frmSocketConnection::handleAborted);
+//    connect(m_ft,&FileTransferr::write,this,&frmSocketConnection::handleFtWrite);
+//    connect(m_ft,&FileTransferr::progressBase,this,&frmSocketConnection::handleProgressBase);
+//    connect(m_ft,&FileTransferr::progress,this,&frmSocketConnection::handleProgress);
+//    m_ft->moveToThread(&m_workThread);
+    if(QSysInfo::productType().contains("win")){
+        m_isLinux = false;
+    }
+    else{
+        m_isLinux = true;
+    }
+
 
 }
 
@@ -69,11 +77,17 @@ void frmSocketConnection::handleSockeRead()
     switch(m_client->state){
     case tcpClient::CS_IDLE:
         sl = QString(recv).split(" ");
-        qDebug()<<Q_FUNC_INFO<<sl;
+        //qDebug()<<Q_FUNC_INFO<<sl;
         switch(cmd_map.value(sl[0])){
         case 0: // ls
         {
-            QFileInfoList flist = QDir("d:/temp/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+            QFileInfoList flist;
+            if(m_isLinux){
+//                flist = QDir("/opt/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+                flist = QDir("/opt/bms/temp/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+            }else{
+                flist = QDir("d:/temp/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+            }
 
             foreach (QFileInfo fi, flist) {
                 QString msg = QString("%1;%2\n").arg(fi.fileName()).arg(fi.size());
@@ -84,18 +98,29 @@ void frmSocketConnection::handleSockeRead()
         case 1:
             // check if request for event log file
             if(sl[1] == "events.txt"){
-                m_fileToSend = "d:/temp/bms/log/record/sys/events.txt";
+                if(m_isLinux){
+//                    m_fileToSend = "/opt/bms/log/record/sys/events.txt";
+                    m_fileToSend = "/opt/bms/temp/log/record/sys/events.txt";
+                }
+                else{
+                    m_fileToSend = "d:/temp/bms/log/record/sys/events.txt";
+                }
             }
             else if(sl[1] == "syslog.txt"){
 
             }
             else{
-                m_fileToSend = "d:/temp/bms/log/"+sl[1];
+                if(m_isLinux){
+//                    m_fileToSend = "/opt/bms/log/"+sl[1];
+                    m_fileToSend = "/opt/bms/temp/log/"+sl[1];
+                }
+                else{
+                    m_fileToSend = "d:/temp/bms/log/"+sl[1];
+                }
             }
             m_sendCount = 0;
             m_bytesRead = 0;
             sendFile();
-            //m_ft->sendFile(m_client->socket->socketDescriptor(), "d:/temp/bms/log/"+sl[1]);
             break;
         case 2: // write
             m_fileToReceive = "";
@@ -118,7 +143,7 @@ void frmSocketConnection::handleSockeRead()
 
             break;
         case 6: // upgrade
-
+            upgradeBMS(3);
         default:
             break;
         }
@@ -134,28 +159,15 @@ void frmSocketConnection::handleSockeRead()
 
 void frmSocketConnection::handleSockeDisconnect()
 {
-    qDebug()<<Q_FUNC_INFO;
-//    if(m_ft->isProcessing()){
-//        m_ft->abort();
-//    }
-    this->destroy();
+    if(m_remoteAddress != 0x7f000001){
+        this->destroy();
+    }
 }
 
 void frmSocketConnection::handleFinished(bool result)
 {
     qDebug()<<Q_FUNC_INFO;
     m_client->state == tcpClient::CS_IDLE;
-    //connect(m_client->socket,&QTcpSocket::readyRead,this,&frmSocketConnection::handleSockeRead);
-    //connect(m_client->socket,&QTcpSocket::disconnected,this,&frmSocketConnection::handleSockeDisconnect);
-//    if(result){
-//        m_fileTransferred++;
-//        if(m_fileTransferred < m_filesToTransfer){
-//            m_ft->start(m_activeSocket, "D:/temp/bms/log/S_01_20210714_12.csv");
-//        }
-//        else if(m_fileTransferred == m_filesToTransfer){
-//            QMessageBox::information(this,"Information","File transfer done");
-//        }
-//    }
 }
 
 void frmSocketConnection::handleAborted()
@@ -223,8 +235,8 @@ void frmSocketConnection::sendFile()
         //b.append(QByteArray::number(fsize));
         //handleFtWrite(b);
         ui->pbCurrentFile->setValue(m_sendCount);
-        b = f.read(1500);
-        m_bytesRead = b.size();
+        m_bytesRead = (m_fileSize-m_sendCount)<1500?(m_fileSize - m_sendCount):1500;
+        b = f.read(m_bytesRead);
         handleFtWrite(b);
     }
     f.close();
@@ -236,7 +248,20 @@ void frmSocketConnection::recvFile(QByteArray b)
         QStringList sl = QString(b).split(" ");
         if(sl.size() == 3){
             qDebug()<<"Start file receive";
-            m_fileToReceive = "d:/temp/bms/temp/"+sl[1];
+            if(m_isLinux){
+                m_fileToReceive = "/opt/bms/temp/"+sl[1];
+                QDir dir;
+                if(!dir.exists("/opt/bms/temp/")){
+                    dir.mkpath("/opt/bms/temp/");
+                }
+            }
+            else{
+                m_fileToReceive = "d:/temp/bms/temp/"+sl[1];
+                QDir dir;
+                if(!dir.exists("d:/temp/bms/temp/")){
+                    dir.mkpath("d:/temp/bms/temp/");
+                }
+            }
             m_recvFileSize = sl[2].toInt();
             m_recvdFileSize = 0;
             m_client->state = tcpClient::CS_FILE_WRITE;
@@ -250,12 +275,13 @@ void frmSocketConnection::recvFile(QByteArray b)
             f.write(b);
             f.close();
             m_recvdFileSize += b.size();
-            //qDebug()<<"Byte Received:"<<m_recvdFileSize;
+            qDebug()<<"\rByte Received:"<<m_recvdFileSize<<"/"<<m_recvFileSize;
             ui->pbCurrentFile->setValue(m_recvdFileSize);
             if(m_recvdFileSize == m_recvFileSize){
                 qDebug()<<"Finish file transfer";
                 m_client->state = tcpClient::CS_IDLE;
             }
+            QThread::msleep(5);
             handleFtWrite(QString("ack").toUtf8());
         }
     }
@@ -279,15 +305,15 @@ void frmSocketConnection::upgradeBMS(int options)
     QString c_dst, u_dst;
     if(QSysInfo::productType().contains("win")){
         c_src = "d:/temp/bms/temp/BMS_Controller";
-        u_src = "d:/temp/bms/temp/BMS_UI";
+        u_src = "d:/temp/bms/temp/BMS_HY01";
         c_dst = "d:/temp/bms/bin/BMS_Controller";
-        u_dst = "d:/temp/bms/bin/BMS_UI";
+        u_dst = "d:/temp/bms/bin/BMS_HY01";
     }
     else{
         c_src = "/opt/bms/temp/BMS_Controller";
-        u_src = "/opt/bms/temp/BMS_UI";
-        c_dst = "/opt/BMS_Controller/bin/BMS_Controller";
-        u_dst = "/opt/BMS_HY01/bin/BMS_HY01";
+        u_src = "/opt/bms/temp/BMS_HY01";
+        c_dst = "/opt/BMS_Controller/bin2/BMS_Controller";
+        u_dst = "/opt/BMS_HY01/bin2/BMS_HY01";
     }
 
     // stop programs
@@ -296,21 +322,27 @@ void frmSocketConnection::upgradeBMS(int options)
         qDebug()<<"systemctl stop bms_ui";
     }
     else{
-        proc.execute("systemctl stop bms_controller");
-        proc.waitForFinished();
-        proc.execute("systemctl stop bms_ui");
-        proc.waitForFinished();
+//        proc.execute("systemctl stop bms_controller");
+//        proc.waitForFinished();
+//        proc.execute("systemctl stop bms_ui");
+//        proc.waitForFinished();
     }
     QString cmd;
     if(options == 1){ // bms controller only
         // check file existance
         if(QFile(c_src).exists()){
+            proc.execute("systemctl stop bms_controller");
+            proc.waitForFinished();
             // remove BMS_Controlle
             cmd = QString("rm %1").arg(c_dst);
             proc.execute(cmd);
             proc.waitForFinished();
-            // cop file
+            // copy file
             cmd = QString("cp %1 %2").arg(c_src).arg(c_dst);
+            proc.execute(cmd);
+            proc.waitForFinished();
+            // change executable
+            cmd = QString("chmod +x %1").arg(c_dst);
             proc.execute(cmd);
             proc.waitForFinished();
         }
@@ -318,6 +350,8 @@ void frmSocketConnection::upgradeBMS(int options)
     }
     else if(options == 2){ // bms ui only
         if(QFile(u_src).exists()){
+            proc.execute("systemctl stop bms_ui");
+            proc.waitForFinished();
             // remove BMS_UI
             cmd = QString("rm %1").arg(u_dst);
             proc.execute(cmd);
@@ -326,11 +360,17 @@ void frmSocketConnection::upgradeBMS(int options)
             cmd = QString("cp %1 %2").arg(u_src).arg(u_dst);
             proc.execute(cmd);
             proc.waitForFinished();
+            // change executable
+            cmd = QString("chmod +x %1").arg(u_dst);
+            proc.execute(cmd);
+            proc.waitForFinished();
         }
 
     }
     else if(options == 3){ // both
         if(QFile(c_src).exists()){
+            proc.execute("systemctl stop bms_controller");
+            proc.waitForFinished();
             // remove BMS_Controlle
             cmd = QString("rm %1").arg(c_dst);
             proc.execute(cmd);
@@ -339,14 +379,24 @@ void frmSocketConnection::upgradeBMS(int options)
             cmd = QString("cp %1 %2").arg(c_src).arg(c_dst);
             proc.execute(cmd);
             proc.waitForFinished();
+            // change executable
+            cmd = QString("chmod +x %1").arg(c_dst);
+            proc.execute(cmd);
+            proc.waitForFinished();
         }
         if(QFile(u_src).exists()){
+            proc.execute("systemctl stop bms_ui");
+            proc.waitForFinished();
             // remove BMS_UI
             cmd = QString("rm %1").arg(u_dst);
             proc.execute(cmd);
             proc.waitForFinished();
             // cop file
             cmd = QString("cp %1 %2").arg(u_src).arg(u_dst);
+            proc.execute(cmd);
+            proc.waitForFinished();
+            // change executable
+            cmd = QString("chmod +x %1").arg(u_dst);
             proc.execute(cmd);
             proc.waitForFinished();
         }
@@ -363,4 +413,56 @@ void frmSocketConnection::upgradeBMS(int options)
         proc.execute("systemctl start bms_ui");
         proc.waitForFinished();
     }
+}
+
+void frmSocketConnection::on_pushButton_2_clicked()
+{
+
+}
+
+void frmSocketConnection::on_pbUpdateController_clicked()
+{
+    upgradeBMS(1);
+}
+
+void frmSocketConnection::on_pbRestartController_clicked()
+{
+    QProcess proc;
+    // start programs
+    if(QSysInfo::productType().contains("win")){
+        qDebug()<<"systemctl restart bms_controller";
+//        qDebug()<<"systemctl restart bms_ui";
+    }
+    else{
+        proc.execute("systemctl restart bms_controller");
+        proc.waitForFinished();
+//        proc.execute("systemctl restart bms_ui");
+//        proc.waitForFinished();
+    }
+}
+
+void frmSocketConnection::on_pbUpdateUI_clicked()
+{
+    upgradeBMS(2);
+}
+
+void frmSocketConnection::on_pbRestartUI_clicked()
+{
+    QProcess proc;
+    // start programs
+    if(QSysInfo::productType().contains("win")){
+//        qDebug()<<"systemctl restart bms_controller";
+        qDebug()<<"systemctl restart bms_ui";
+    }
+    else{
+//        proc.execute("systemctl restart bms_controller");
+//        proc.waitForFinished();
+        proc.execute("systemctl restart bms_ui");
+        proc.waitForFinished();
+    }
+}
+
+void frmSocketConnection::on_pbUpdateConfig_clicked()
+{
+
 }
