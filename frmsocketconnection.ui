@@ -7,15 +7,66 @@
     <x>0</x>
     <y>0</y>
     <width>320</width>
-    <height>240</height>
+    <height>320</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>BMS Daemon</string>
+   <string>BMS Manager</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="4" column="2">
+    <widget class="QPushButton" name="pbRestartUI">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>重啟GUI</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="3">
+    <widget class="QPushButton" name="pbUpdateConfig">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>更換設定檔</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QPushButton" name="pbUpdateUI">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>更新GUI</string>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="0" colspan="4">
     <widget class="QLabel" name="lbInfo">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>80</height>
+      </size>
+     </property>
      <property name="text">
       <string>TextLabel</string>
      </property>
@@ -24,14 +75,7 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>檔案傳輸:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1" colspan="3">
+   <item row="2" column="1" colspan="3">
     <widget class="QProgressBar" name="pbCurrentFile">
      <property name="value">
       <number>0</number>
@@ -41,45 +85,62 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0" colspan="2">
+   <item row="2" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>檔案傳輸:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="2">
     <widget class="QPushButton" name="pbUpdateController">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="text">
       <string>更新主程式</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="2">
-    <widget class="QPushButton" name="pbUpdateUI">
-     <property name="text">
-      <string>更新GUI</string>
+   <item row="4" column="3">
+    <widget class="QPushButton" name="pushButton_4">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
      </property>
-    </widget>
-   </item>
-   <item row="2" column="3">
-    <widget class="QPushButton" name="pbUpdateConfig">
      <property name="text">
       <string>更換設定檔</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
+   <item row="4" column="0" colspan="2">
     <widget class="QPushButton" name="pbRestartController">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="text">
       <string>重啟主程式</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="2">
-    <widget class="QPushButton" name="pbRestartUI">
-     <property name="text">
-      <string>重啟GUI</string>
+   <item row="1" column="0" colspan="4">
+    <widget class="QLabel" name="lbFileName">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>40</height>
+      </size>
      </property>
-    </widget>
-   </item>
-   <item row="3" column="3">
-    <widget class="QPushButton" name="pushButton_4">
      <property name="text">
-      <string>更換設定檔</string>
+      <string>lbFileName</string>
      </property>
     </widget>
    </item>

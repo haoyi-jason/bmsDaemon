@@ -57,11 +57,11 @@ void frmSocketConnection::setClient(tcpClient *c)
     // loop through each file
     //m_ft->start(m_activeSocket, "D:/temp/bms/log/S_01_20210714_12.csv");
     //m_client->socket->write("Welcome 2");
-    QString msg = "Incoming Connection from:\n" + m_client->socket->peerAddress().toString();
-    ui->lbInfo->setText(msg);
 
     m_remoteAddress = m_client->socket->peerAddress().toIPv4Address();
-    qDebug()<<"Remote Address:"<<QString::number(m_remoteAddress,16);
+//    qDebug()<<"Remote Address:"<<QString::number(m_remoteAddress,16);
+    QString msg = "Incoming Connection from:\n" + m_client->socket->peerAddress().toString();
+    ui->lbInfo->setText(msg);
 }
 
 void frmSocketConnection::handleFtWrite(QByteArray b)
@@ -83,8 +83,8 @@ void frmSocketConnection::handleSockeRead()
         {
             QFileInfoList flist;
             if(m_isLinux){
-//                flist = QDir("/opt/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
-                flist = QDir("/opt/bms/temp/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+                flist = QDir("/mnt/t/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+                //flist = QDir("/opt/bms/temp/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
             }else{
                 flist = QDir("d:/temp/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
             }
@@ -111,8 +111,8 @@ void frmSocketConnection::handleSockeRead()
             }
             else{
                 if(m_isLinux){
-//                    m_fileToSend = "/opt/bms/log/"+sl[1];
-                    m_fileToSend = "/opt/bms/temp/log/"+sl[1];
+                    m_fileToSend = "/mnt/t/log/"+sl[1];
+//                    m_fileToSend = "/opt/bms/temp/log/"+sl[1];
                 }
                 else{
                     m_fileToSend = "d:/temp/bms/log/"+sl[1];
@@ -120,6 +120,7 @@ void frmSocketConnection::handleSockeRead()
             }
             m_sendCount = 0;
             m_bytesRead = 0;
+            ui->lbFileName->setText("Sending File:"+sl[1]);
             sendFile();
             break;
         case 2: // write
@@ -160,7 +161,7 @@ void frmSocketConnection::handleSockeRead()
 void frmSocketConnection::handleSockeDisconnect()
 {
     if(m_remoteAddress != 0x7f000001){
-        this->destroy();
+        this->deleteLater();
     }
 }
 
