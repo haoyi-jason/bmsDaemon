@@ -12,7 +12,7 @@ class QUdpSocket;
 
 class dgSocketConnected;
 
-const QMap<QString,int> cmd_map = {{"ls",0},{"read",1},{"write",2},{"restart",3},{"ack",4},{"nak",5},{"upgrade",6}};
+const QMap<QString,int> cmd_map = {{"ls",0},{"read",1},{"write",2},{"restart",3},{"ack",4},{"nak",5},{"upgrade",6},{"txdelay",7}};
 
 
 
@@ -58,8 +58,8 @@ private slots:
 private:
     QTcpServer *m_server = nullptr;
     QList<tcpClient*> m_client;
-    dgSocketConnected *m_dgSocketConnect;
-    frmSocketConnection *m_frmSocket;
+    dgSocketConnected *m_dgSocketConnect = nullptr;
+    frmSocketConnection *m_frmSocket = nullptr;
 };
 
 #endif // BMSDAEMON_H

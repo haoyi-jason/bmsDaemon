@@ -47,9 +47,16 @@ void bmsDaemon::handleNewConnection()
 
     //m_dgSocketConnect = new dgSocketConnected;
    // m_dgSocketConnect->exec();
+//    if(m_frmSocket != nullptr){
+//        m_frmSocket->close();
+//        //delete m_frmSocket;
+//        m_frmSocket = nullptr;
+//    }
     m_frmSocket = new frmSocketConnection;
+    m_frmSocket->setAttribute(Qt::WA_DeleteOnClose,true);
     m_frmSocket->setClient(client);
     m_frmSocket->show();
+
 }
 
 void bmsDaemon::handleDataReceived()

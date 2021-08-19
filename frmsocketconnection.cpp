@@ -10,6 +10,7 @@
 #include <QHostAddress>
 #include <QProcess>
 #include <QSysInfo>
+#include <QStringList>
 
 
 frmSocketConnection::frmSocketConnection(QWidget *parent) :
@@ -60,7 +61,8 @@ void frmSocketConnection::setClient(tcpClient *c)
 
     m_remoteAddress = m_client->socket->peerAddress().toIPv4Address();
 //    qDebug()<<"Remote Address:"<<QString::number(m_remoteAddress,16);
-    QString msg = "Incoming Connection from:\n" + m_client->socket->peerAddress().toString();
+    QStringList sl = m_client->socket->peerAddress().toString().split(":");
+    QString msg = "Incoming Connection from:\n" + sl[sl.size()-1]; //m_client->socket->peerAddress().toString();
     ui->lbInfo->setText(msg);
 }
 
@@ -89,25 +91,53 @@ void frmSocketConnection::handleSockeRead()
                 flist = QDir("d:/temp/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
             }
 
-            foreach (QFileInfo fi, flist) {
-                QString msg = QString("%1;%2\n").arg(fi.fileName()).arg(fi.size());
+            if(flist.size() > 0){
+                foreach (QFileInfo fi, flist) {
+                    QString msg = QString("%1;%2\n").arg(fi.fileName()).arg(fi.size());
+                    m_client->socket->write(msg.toUtf8());
+                }
+                // copy events.log to temporary file
+                QProcess proc;
+                proc.execute("/bin/sh -c \"cp /opt/bms/log/sys/events.log /opt/bms/log/sys/event_t.log\"");
+                proc.waitForFinished();
+                // send event log
+                QFileInfo finfo("/opt/bms/log/sys/event_t.log");
+//                QFileInfo finfo("/opt/bms/log/sys/events.log");
+                QString msg = QString("%1;%2\n").arg(finfo.fileName()).arg(finfo.size());
+                m_client->socket->write(msg.toUtf8());
+
+                QFileInfo config("/opt/bms/config/controller.json");
+                msg = QString("%1;%2\n").arg(config.fileName()).arg(config.size());
+                m_client->socket->write(msg.toUtf8());
+            }
+            else{
+                QString msg = "NULL;0\n";
                 m_client->socket->write(msg.toUtf8());
             }
         }
             break;
         case 1:
             // check if request for event log file
-            if(sl[1] == "events.txt"){
+            if(sl[1] == "eventLog.csv"){
                 if(m_isLinux){
-//                    m_fileToSend = "/opt/bms/log/record/sys/events.txt";
-                    m_fileToSend = "/opt/bms/temp/log/record/sys/events.txt";
+//                    m_fileToSend = "/opt/bms/log/record/sys/eventLog.csv";
+                    m_fileToSend = "/opt/bms/log/record/eventLog.csv";
                 }
                 else{
-                    m_fileToSend = "d:/temp/bms/log/record/sys/events.txt";
+                    m_fileToSend = "d:/temp/bms/log/record/eventLog.csv";
                 }
             }
-            else if(sl[1] == "syslog.txt"){
-
+            else if(sl[1] == "events.log"){
+                if(m_isLinux){
+//                    m_fileToSend = "/opt/bms/log/record/sys/eventLog.csv";
+                    m_fileToSend = "/opt/bms/log/sys/events.log";
+                }
+                else{
+                    m_fileToSend = "d:/temp/bms/log/record/sys/event_t.log";
+                }
+            }
+            else if(sl[1] == "controller.json"){
+                m_fileToSend = "/opt/bms/config/controller.json";
             }
             else{
                 if(m_isLinux){
@@ -145,6 +175,21 @@ void frmSocketConnection::handleSockeRead()
             break;
         case 6: // upgrade
             upgradeBMS(3);
+            break;
+        case 7: // txdelay
+            if(sl.size() == 2){
+                int delay = sl[1].toInt();
+                if(delay < 0) delay = 10;
+                if(delay > 50) delay = 50;
+                if(delay == 0){
+                    m_limitTransfer = false;
+                }
+                else{
+                    m_limitTransfer = true;
+                    m_transferDelay = delay;
+                }
+            }
+            break;
         default:
             break;
         }
@@ -239,6 +284,8 @@ void frmSocketConnection::sendFile()
         m_bytesRead = (m_fileSize-m_sendCount)<1500?(m_fileSize - m_sendCount):1500;
         b = f.read(m_bytesRead);
         handleFtWrite(b);
+        if(m_limitTransfer)
+            QThread::msleep(m_transferDelay);
     }
     f.close();
 }
@@ -298,6 +345,34 @@ void frmSocketConnection::handleProgress(int value)
     ui->pbCurrentFile->setValue(value);
 }
 
+void frmSocketConnection::replaceConfigFile()
+{
+    QProcess proc;
+
+    QString src, dst;
+    if(QSysInfo::productType().contains("win")){
+        src = "d:/temp/bms/temp/controller.json";
+        dst = "d:/temp/bms/temp/controller_new.json";
+    }
+    else{
+        src = "/opt/bms/temp/controller.json";
+        dst = "/opt/bms/config/controller.json";
+    }
+
+    QString cmd;
+    // check file existance
+    if(QFile(src).exists()){
+        // remove old file
+        cmd = QString("rm %1").arg(dst);
+        proc.execute(cmd);
+        proc.waitForFinished();
+        // copy file
+        cmd = QString("mv %1 %2").arg(src).arg(dst);
+        proc.execute(cmd);
+        proc.waitForFinished();
+    }
+}
+
 void frmSocketConnection::upgradeBMS(int options)
 {
     QProcess proc;
@@ -313,8 +388,8 @@ void frmSocketConnection::upgradeBMS(int options)
     else{
         c_src = "/opt/bms/temp/BMS_Controller";
         u_src = "/opt/bms/temp/BMS_HY01";
-        c_dst = "/opt/BMS_Controller/bin2/BMS_Controller";
-        u_dst = "/opt/BMS_HY01/bin2/BMS_HY01";
+        c_dst = "/opt/BMS_Controller/bin/BMS_Controller";
+        u_dst = "/opt/BMS_HY01/bin/BMS_HY01";
     }
 
     // stop programs
@@ -339,7 +414,7 @@ void frmSocketConnection::upgradeBMS(int options)
             proc.execute(cmd);
             proc.waitForFinished();
             // copy file
-            cmd = QString("cp %1 %2").arg(c_src).arg(c_dst);
+            cmd = QString("mv %1 %2").arg(c_src).arg(c_dst);
             proc.execute(cmd);
             proc.waitForFinished();
             // change executable
@@ -358,7 +433,7 @@ void frmSocketConnection::upgradeBMS(int options)
             proc.execute(cmd);
             proc.waitForFinished();
             // cop file
-            cmd = QString("cp %1 %2").arg(u_src).arg(u_dst);
+            cmd = QString("mv %1 %2").arg(u_src).arg(u_dst);
             proc.execute(cmd);
             proc.waitForFinished();
             // change executable
@@ -377,7 +452,7 @@ void frmSocketConnection::upgradeBMS(int options)
             proc.execute(cmd);
             proc.waitForFinished();
             // cop file
-            cmd = QString("cp %1 %2").arg(c_src).arg(c_dst);
+            cmd = QString("mv %1 %2").arg(c_src).arg(c_dst);
             proc.execute(cmd);
             proc.waitForFinished();
             // change executable
@@ -393,7 +468,7 @@ void frmSocketConnection::upgradeBMS(int options)
             proc.execute(cmd);
             proc.waitForFinished();
             // cop file
-            cmd = QString("cp %1 %2").arg(u_src).arg(u_dst);
+            cmd = QString("mv %1 %2").arg(u_src).arg(u_dst);
             proc.execute(cmd);
             proc.waitForFinished();
             // change executable
@@ -402,6 +477,14 @@ void frmSocketConnection::upgradeBMS(int options)
             proc.waitForFinished();
         }
     }
+
+//    // unlink source
+//    cmd = QString("rm %1").arg(c_src);
+//    proc.execute(cmd);
+//    proc.waitForFinished();
+//    cmd = QString("rm %1").arg(u_src);
+//    proc.execute(cmd);
+//    proc.waitForFinished();
 
     // start programs
     if(QSysInfo::productType().contains("win")){
@@ -465,5 +548,5 @@ void frmSocketConnection::on_pbRestartUI_clicked()
 
 void frmSocketConnection::on_pbUpdateConfig_clicked()
 {
-
+    replaceConfigFile();
 }

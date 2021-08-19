@@ -31,6 +31,9 @@ public:
     ~frmSocketConnection();
     void setClient(tcpClient *c);
 
+signals:
+
+
 private slots:
     void handleSockeRead();
     void handleSockeDisconnect();
@@ -48,6 +51,8 @@ private slots:
     void handleProgress(int value);
 
     void upgradeBMS(int options);
+
+    void replaceConfigFile();
 
     void on_pushButton_2_clicked();
 
@@ -83,6 +88,8 @@ private:
     quint64 m_recvdFileSize = 0;
     quint32 m_remoteAddress;
     bool m_isLinux = false;
+    bool m_limitTransfer = true;
+    int m_transferDelay = 10;
 };
 
 #endif // FRMSOCKETCONNECTION_H
