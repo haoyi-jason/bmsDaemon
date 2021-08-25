@@ -83,9 +83,21 @@ void frmSocketConnection::handleSockeRead()
         switch(cmd_map.value(sl[0])){
         case 0: // ls
         {
+            QFile f("/opt/bms/config/searchpath");
+            QString logPath = "";
+            if(f.open(QIODevice::ReadWrite)){
+                logPath = QString(f.readLine());
+                f.close();
+                logPath = logPath.trimmed();
+            }
+            if(logPath == ""){
+                logPath = "/mnt/t";
+            }
+
+            //qDebug()<<"Search Path:"<<logPath;
             QFileInfoList flist;
             if(m_isLinux){
-                flist = QDir("/mnt/t/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+                flist = QDir(logPath).entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
                 //flist = QDir("/opt/bms/temp/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
             }else{
                 flist = QDir("d:/temp/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);

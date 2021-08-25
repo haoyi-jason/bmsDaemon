@@ -5,6 +5,13 @@
 
 bmsDaemon::bmsDaemon()
 {
+    // check for search path
+    QFile f("/opt/bms/config/searchpath");
+    if(!f.exists()){
+        f.open(QIODevice::ReadWrite);
+        f.write("/mnt/t");
+        f.close();
+    }
 
 }
 
