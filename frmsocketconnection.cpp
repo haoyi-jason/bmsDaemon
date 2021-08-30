@@ -76,6 +76,7 @@ void frmSocketConnection::handleSockeRead()
     QStringList sl;
     //m_client->socket->write("Hello");
     QByteArray recv = m_client->socket->readAll();
+    //QString logPath = "";
     switch(m_client->state){
     case tcpClient::CS_IDLE:
         sl = QString(recv).split(" ");
@@ -84,24 +85,26 @@ void frmSocketConnection::handleSockeRead()
         case 0: // ls
         {
             QFile f("/opt/bms/config/searchpath");
-            QString logPath = "";
             if(f.open(QIODevice::ReadWrite)){
-                logPath = QString(f.readLine());
+                m_logPath = QString(f.readLine());
                 f.close();
-                logPath = logPath.trimmed();
+                m_logPath = m_logPath.trimmed();
             }
-            if(logPath == ""){
-                logPath = "/mnt/t";
+            if(m_logPath == ""){
+                m_logPath = "/mnt/t";
             }
+
 
             //qDebug()<<"Search Path:"<<logPath;
             QFileInfoList flist;
             if(m_isLinux){
-                flist = QDir(logPath).entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
+                flist = QDir(m_logPath).entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
                 //flist = QDir("/opt/bms/temp/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
             }else{
                 flist = QDir("d:/temp/bms/log").entryInfoList(QStringList()<<"*.csv",QDir::Files | QDir::NoDotAndDotDot, QDir::Reversed);
             }
+
+            //qDebug()<<"File list:"<<flist.size();
 
             if(flist.size() > 0){
                 foreach (QFileInfo fi, flist) {
@@ -114,8 +117,13 @@ void frmSocketConnection::handleSockeRead()
                 proc.waitForFinished();
                 // send event log
                 QFileInfo finfo("/opt/bms/log/sys/event_t.log");
-//                QFileInfo finfo("/opt/bms/log/sys/events.log");
-                QString msg = QString("%1;%2\n").arg(finfo.fileName()).arg(finfo.size());
+                QString msg = QString("%1;%2\n").arg("events.log").arg(finfo.size());
+                m_client->socket->write(msg.toUtf8());
+
+                proc.execute("/bin/sh -c \"cp /opt/bms/log/record/eventLog.csv /opt/bms/log/record/eventLog_t.csv\"");
+                proc.waitForFinished();
+                QFileInfo eventLog("/opt/bms/log/record/eventLog_t.csv");
+                msg = QString("%1;%2\n").arg("eventLog.csv").arg(eventLog.size());
                 m_client->socket->write(msg.toUtf8());
 
                 QFileInfo config("/opt/bms/config/controller.json");
@@ -129,11 +137,11 @@ void frmSocketConnection::handleSockeRead()
         }
             break;
         case 1:
+            //qDebug()<<"Read File:"+sl[1];
             // check if request for event log file
             if(sl[1] == "eventLog.csv"){
                 if(m_isLinux){
-//                    m_fileToSend = "/opt/bms/log/record/sys/eventLog.csv";
-                    m_fileToSend = "/opt/bms/log/record/eventLog.csv";
+                    m_fileToSend = "/opt/bms/log/record/eventLog_t.csv";
                 }
                 else{
                     m_fileToSend = "d:/temp/bms/log/record/eventLog.csv";
@@ -141,8 +149,7 @@ void frmSocketConnection::handleSockeRead()
             }
             else if(sl[1] == "events.log"){
                 if(m_isLinux){
-//                    m_fileToSend = "/opt/bms/log/record/sys/eventLog.csv";
-                    m_fileToSend = "/opt/bms/log/sys/events.log";
+                    m_fileToSend = "/opt/bms/log/sys/event_t.log";
                 }
                 else{
                     m_fileToSend = "d:/temp/bms/log/record/sys/event_t.log";
@@ -153,8 +160,7 @@ void frmSocketConnection::handleSockeRead()
             }
             else{
                 if(m_isLinux){
-                    m_fileToSend = "/mnt/t/log/"+sl[1];
-//                    m_fileToSend = "/opt/bms/temp/log/"+sl[1];
+                    m_fileToSend = m_logPath+"/"+sl[1];
                 }
                 else{
                     m_fileToSend = "d:/temp/bms/log/"+sl[1];
@@ -163,6 +169,7 @@ void frmSocketConnection::handleSockeRead()
             m_sendCount = 0;
             m_bytesRead = 0;
             ui->lbFileName->setText("Sending File:"+sl[1]);
+            qDebug()<<"Send file:"<<m_fileToSend;
             sendFile();
             break;
         case 2: // write

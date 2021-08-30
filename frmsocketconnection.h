@@ -90,6 +90,7 @@ private:
     bool m_isLinux = false;
     bool m_limitTransfer = true;
     int m_transferDelay = 10;
+    QString m_logPath="";
 };
 
 #endif // FRMSOCKETCONNECTION_H
